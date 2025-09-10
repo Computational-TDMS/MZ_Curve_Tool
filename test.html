@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #results {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>前端连接测试</h1>
+        
+        <div class="test-section">
+            <h3>1. 基本连接测试</h3>
+            <button onclick="testBasicConnection()">测试基本连接</button>
+            <div id="basic-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. Vue应用测试</h3>
+            <button onclick="testVueApp()">测试Vue应用</button>
+            <div id="vue-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. API连接测试</h3>
+            <button onclick="testAPI()">测试API连接</button>
+            <div id="api-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. 组件加载测试</h3>
+            <button onclick="testComponents()">测试组件加载</button>
+            <div id="component-result"></div>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function showResult(elementId, message, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = message;
+            element.className = isSuccess ? 'success' : 'error';
+        }
+        
+        function addResult(message, isSuccess = true) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = isSuccess ? 'success' : 'error';
+            div.innerHTML = message;
+            div.style.marginBottom = '10px';
+            div.style.padding = '10px';
+            div.style.borderRadius = '5px';
+            results.appendChild(div);
+        }
+        
+        async function testBasicConnection() {
+            try {
+                const response = await fetch('http://localhost:1420');
+                if (response.ok) {
+                    showResult('basic-result', '✅ 基本连接成功！服务器正在运行。', true);
+                    addResult('基本连接测试通过', true);
+                } else {
+                    showResult('basic-result', '❌ 连接失败：' + response.status, false);
+                    addResult('基本连接测试失败', false);
+                }
+            } catch (error) {
+                showResult('basic-result', '❌ 连接错误：' + error.message, false);
+                addResult('基本连接测试错误: ' + error.message, false);
+            }
+        }
+        
+        async function testVueApp() {
+            try {
+                const response = await fetch('http://localhost:1420');
+                const html = await response.text();
+                
+                if (html.includes('id="app"')) {
+                    showResult('vue-result', '✅ Vue应用容器存在', true);
+                    addResult('Vue应用容器测试通过', true);
+                } else {
+                    showResult('vue-result', '❌ Vue应用容器未找到', false);
+                    addResult('Vue应用容器测试失败', false);
+                }
+                
+                if (html.includes('main.ts')) {
+                    showResult('vue-result', '✅ Vue应用脚本已加载', true);
+                    addResult('Vue应用脚本测试通过', true);
+                } else {
+                    showResult('vue-result', '❌ Vue应用脚本未找到', false);
+                    addResult('Vue应用脚本测试失败', false);
+                }
+            } catch (error) {
+                showResult('vue-result', '❌ Vue应用测试错误：' + error.message, false);
+                addResult('Vue应用测试错误: ' + error.message, false);
+            }
+        }
+        
+        async function testAPI() {
+            try {
+                // 测试Tauri API是否可用
+                if (window.__TAURI__) {
+                    showResult('api-result', '✅ Tauri API可用', true);
+                    addResult('Tauri API测试通过', true);
+                } else {
+                    showResult('api-result', '⚠️ Tauri API不可用（在浏览器中正常）', true);
+                    addResult('Tauri API不可用（浏览器环境）', true);
+                }
+            } catch (error) {
+                showResult('api-result', '❌ API测试错误：' + error.message, false);
+                addResult('API测试错误: ' + error.message, false);
+            }
+        }
+        
+        async function testComponents() {
+            try {
+                const response = await fetch('http://localhost:1420/src/components/');
+                if (response.ok) {
+                    showResult('component-result', '✅ 组件目录可访问', true);
+                    addResult('组件目录测试通过', true);
+                } else {
+                    showResult('component-result', '❌ 组件目录不可访问', false);
+                    addResult('组件目录测试失败', false);
+                }
+            } catch (error) {
+                showResult('component-result', '❌ 组件测试错误：' + error.message, false);
+                addResult('组件测试错误: ' + error.message, false);
+            }
+        }
+        
+        // 页面加载时自动运行基本测试
+        window.onload = function() {
+            addResult('页面加载完成，开始自动测试...', true);
+            setTimeout(testBasicConnection, 1000);
+        };
+    </script>
+</body>
+</html>

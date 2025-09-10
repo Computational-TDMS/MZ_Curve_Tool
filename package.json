@@ -1,0 +1,38 @@
+{
+  "name": "mz_curve_gui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:debug": "NODE_ENV=development vite --debug",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:dev:debug": "NODE_ENV=development tauri dev"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.1",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "~2",
+    "@tauri-apps/plugin-opener": "^2",
+    "devtools": "^8.42.0",
+    "element-plus": "^2.8.8",
+    "pinia": "^2.1.7",
+    "plotly": "^1.0.6",
+    "plotly.js-dist": "^2.35.2",
+    "uuid": "^9.0.1",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "@vue/devtools": "^8.0.1",
+    "terser": "^5.44.0",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.3",
+    "vue-tsc": "^2.1.10"
+  }
+}
