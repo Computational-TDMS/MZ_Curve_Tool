@@ -23,7 +23,7 @@
           <span class="value">{{ fileInfo.format.toUpperCase() }}</span>
         </div>
         <div class="info-item">
-          <span class="label">光谱数:</span>
+          <span class="label">谱图数:</span>
           <span class="value">{{ fileInfo.spectra_count || '未知' }}</span>
         </div>
         <div class="info-item">
@@ -227,7 +227,7 @@ const statusText = computed(() => {
 
 const statusDetails = computed(() => {
   if (props.fileInfo && props.fileInfo.is_valid) {
-    return `文件已加载，包含 ${props.fileInfo.spectra_count || 0} 个光谱`
+    return `文件已加载，包含 ${props.fileInfo.spectra_count || 0} 个谱图`
   }
   return null
 })

@@ -1,8 +1,8 @@
-# MZ Curve - 质谱数据处理与分析项目
+# MZ Curve GUI - 质谱数据处理与分析桌面应用
 
 ## 项目概述
 
-MZ Curve 是一个用 Rust 编写的质谱数据处理与分析库，专门用于处理离子迁移谱（IMS）数据、质谱数据和色谱数据。项目提供了完整的峰检测、峰拟合、基线校正和可视化功能。
+MZ Curve GUI 是一个基于 Tauri + Vue.js 构建的现代化桌面应用程序，专门用于处理离子迁移谱（IMS）数据、质谱数据和色谱数据。该应用提供了完整的峰检测、峰拟合、基线校正、数据可视化和导出功能，具有直观的用户界面和强大的后端处理能力。
 
 ## 核心功能
 
@@ -42,21 +42,29 @@ MZ Curve 是一个用 Rust 编写的质谱数据处理与分析库，专门用�
 ### 5. 数据导出与可视化
 - **TSV格式导出**: 完整的峰和曲线数据
 - **Plotly JSON导出**: 交互式可视化
+- **光谱数据导出**: 支持全景光谱数据导出（mz, dt, intensity格式）
+- **曲线数据导出**: 支持批量曲线数据导出到文件夹
 - **批量导出**: 支持多种格式同时导出
 
 ## 项目架构
 
-### 流水线峰分析架构
+### 现代化桌面应用架构
 
 ```
-前端 (Vue.js + TypeScript)
+前端 (Vue 3 + TypeScript + Element Plus)
     ↓ (Tauri Commands)
-后端 (Rust) - 流水线处理
+后端 (Rust) - 模块化处理引擎
     ↓ (DataContainer + Peak对象)
 峰分析流水线
     ↓ (逐步增强的Peak对象)
-前端可视化 (Plotly)
+前端可视化 (Plotly.js)
 ```
+
+### 技术栈
+- **前端**: Vue 3 + TypeScript + Element Plus + Plotly.js
+- **后端**: Rust + Tauri + mzdata
+- **构建工具**: Vite + Cargo
+- **包管理**: pnpm + Cargo
 
 #### 核心流水线设计
 
@@ -235,183 +243,291 @@ DataContainer {
 
 ## 模块组织
 
-### 核心模块
-- `data/`: 数据结构定义
-- `loaders/`: 数据加载器
-- `processors/`: 数据处理模块
-- `exporters/`: 数据导出模块
-- `utils/`: 工具函数
+### 前端模块结构
+```
+src/
+├── components/              # Vue组件
+│   ├── ParameterPanel.vue   # 参数配置面板
+│   ├── PlotPanel.vue        # 数据可视化面板
+│   ├── InfoPanel.vue        # 信息显示面板
+│   └── ProgressBar.vue      # 进度条组件
+├── types/                   # TypeScript类型定义
+│   ├── data.ts             # 数据结构类型
+│   ├── plotly.d.ts         # Plotly类型声明
+│   └── tauri.d.ts          # Tauri类型声明
+└── App.vue                 # 主应用组件
+```
 
-### 处理器模块
-- `peak_detection/`: 峰检测算法
-- `peak_fitting/`: 峰拟合方法
-- `overlapping_peaks/`: 重叠峰处理
-- `baseline_correction/`: 基线校正
+### 后端模块结构
+```
+src-tauri/src/
+├── lib.rs                  # Tauri应用入口
+├── main.rs                 # 主程序入口
+├── tauri/                  # Tauri相关模块
+│   ├── commands/           # 命令模块（已重构）
+│   │   ├── file_commands.rs      # 文件操作命令
+│   │   ├── curve_commands.rs     # 曲线提取命令
+│   │   ├── peak_commands.rs      # 峰分析命令
+│   │   ├── export_commands.rs    # 数据导出命令
+│   │   ├── processing_commands.rs # 数据处理命令
+│   │   ├── config_commands.rs    # 配置管理命令
+│   │   └── visualization_commands.rs # 可视化命令
+│   └── state.rs            # 应用状态管理
+└── core/                   # 核心处理引擎
+    ├── data/               # 数据结构定义
+    ├── loaders/            # 数据加载器
+    ├── processors/         # 数据处理模块
+    │   ├── peak_detection/ # 峰检测算法
+    │   ├── peak_fitting/   # 峰拟合方法
+    │   ├── overlapping_peaks/ # 重叠峰处理
+    │   └── baseline_correction/ # 基线校正
+    ├── exporters/          # 数据导出模块
+    │   ├── tsv_exporter.rs      # TSV导出器
+    │   ├── plotly_exporter.rs   # Plotly导出器
+    │   ├── curve_tsv_exporter.rs # 曲线TSV导出器
+    │   └── spectro_tsv_exporter.rs # 光谱TSV导出器
+    ├── pipeline/           # 流水线处理
+    └── utils/              # 工具函数
+```
+
+### 已实现的导出器
+- **TsvExporter**: 通用TSV格式导出
+- **PlotlyExporter**: Plotly JSON格式导出
+- **CurveTsvExporter**: 优化的曲线数据TSV导出
+- **SpectroTsvExporter**: 光谱数据TSV导出（mz, dt, intensity格式）
 
 ## 流水线API接口设计
 
-### Tauri Commands 接口 - 流水线架构
+### 当前实现的Tauri Commands接口
 
 ```rust
-// 1. 文件操作
+// 1. 文件操作命令 (file_commands.rs)
 #[tauri::command]
 pub async fn load_file(file_path: String) -> Result<FileInfo, String>
 
 #[tauri::command] 
 pub async fn validate_file(file_path: String) -> Result<ValidationResult, String>
 
-// 2. 数据提取
+#[tauri::command]
+pub async fn clear_file_cache() -> Result<(), String>
+
+// 2. 曲线提取命令 (curve_commands.rs)
 #[tauri::command]
 pub async fn extract_curve(params: CurveExtractionParams) -> Result<DataContainer, String>
 
-// 3. 峰检测流水线 - 添加位置和峰高
 #[tauri::command]
-pub async fn detect_peaks(
-    container: DataContainer,           // 输入: 包含曲线的DataContainer
-    params: PeakDetectionParams
-) -> Result<DataContainer, String>      // 输出: 包含检测峰的DataContainer
-// Peak对象增强: center, amplitude, detection_method
+pub async fn batch_process_files(params: BatchProcessParams) -> Result<Vec<ProcessingResult>, String>
 
-// 4. 峰拟合流水线 - 添加面积、半峰宽、拟合参数
 #[tauri::command]
-pub async fn fit_peaks(
-    container: DataContainer,           // 输入: 包含检测峰的DataContainer
-    params: PeakFittingParams
-) -> Result<DataContainer, String>      // 输出: 包含拟合结果的DataContainer
-// Peak对象增强: area, fwhm, sigma, rsquared, 拟合参数
-// 功能: 支持曲线还原用于可视化
+pub async fn get_curve_data_for_display(container: DataContainer) -> Result<CurveDisplayData, String>
 
-// 5. 峰增强流水线 - 添加质量评分、边界信息
+// 3. 峰分析命令 (peak_commands.rs)
 #[tauri::command]
-pub async fn enhance_peaks(
-    container: DataContainer,           // 输入: 包含拟合峰的DataContainer
-    params: PeakEnhancementParams
-) -> Result<DataContainer, String>      // 输出: 包含增强峰的DataContainer
-// Peak对象增强: quality_score, boundaries, separation, 质量指标
+pub async fn analyze_peaks(container: DataContainer, params: PeakAnalysisParams) -> Result<DataContainer, String>
 
-// 6. 曲线还原 - 生成拟合曲线用于可视化
+// 4. 数据导出命令 (export_commands.rs)
 #[tauri::command]
-pub async fn reconstruct_curves(
-    container: DataContainer,           // 输入: 包含拟合峰的DataContainer
-    params: CurveReconstructionParams
-) -> Result<DataContainer, String>      // 输出: 包含拟合曲线的DataContainer
-// 功能: 根据拟合参数生成拟合曲线数据点
+pub async fn export_curves_to_folder(output_folder: String, container: DataContainer) -> Result<ExportResultInfo, String>
 
-// 7. 基线校正
-#[tauri::command]
-pub async fn baseline_correction(
-    container: DataContainer,           // 输入: DataContainer
-    params: BaselineCorrectionParams
-) -> Result<DataContainer, String>      // 输出: 处理后的DataContainer
-
-// 8. 数据导出
 #[tauri::command]
 pub async fn export_tsv(container: DataContainer, params: ExportParams) -> Result<ExportResultInfo, String>
 
 #[tauri::command]
-pub async fn export_plotly(container: DataContainer, params: ExportParams) -> Result<ExportResultInfo, String>
+pub async fn export_json(container: DataContainer, params: ExportParams) -> Result<ExportResultInfo, String>
+
+#[tauri::command]
+pub async fn export_plot(container: DataContainer, params: ExportParams) -> Result<ExportResultInfo, String>
+
+#[tauri::command]
+pub async fn export_spectro_tsv(params: SpectroExportParams) -> Result<ExportResultInfo, String>
+
+// 5. 数据处理命令 (processing_commands.rs)
+#[tauri::command]
+pub async fn baseline_correction(container: DataContainer, params: BaselineCorrectionParams) -> Result<DataContainer, String>
+
+#[tauri::command]
+pub async fn overlapping_peaks(container: DataContainer, params: OverlappingPeaksParams) -> Result<DataContainer, String>
+
+#[tauri::command]
+pub async fn smooth_data(container: DataContainer, params: SmoothingParams) -> Result<DataContainer, String>
+
+#[tauri::command]
+pub async fn noise_reduction(container: DataContainer, params: NoiseReductionParams) -> Result<DataContainer, String>
+
+// 6. 配置管理命令 (config_commands.rs)
+#[tauri::command]
+pub async fn get_app_state() -> Result<AppState, String>
+
+#[tauri::command]
+pub async fn update_processing_params(params: ProcessingParams) -> Result<(), String>
+
+#[tauri::command]
+pub async fn get_processing_status() -> Result<ProcessingStatus, String>
+
+#[tauri::command]
+pub async fn save_config(config: AppConfig) -> Result<(), String>
+
+#[tauri::command]
+pub async fn load_config() -> Result<AppConfig, String>
+
+#[tauri::command]
+pub async fn reset_config() -> Result<(), String>
+
+#[tauri::command]
+pub async fn get_default_params() -> Result<ProcessingParams, String>
+
+// 7. 可视化命令 (visualization_commands.rs)
+#[tauri::command]
+pub async fn generate_plot(container: DataContainer, params: PlotParams) -> Result<PlotData, String>
+
+#[tauri::command]
+pub async fn update_plot(container: DataContainer, params: PlotParams) -> Result<PlotData, String>
+
+#[tauri::command]
+pub async fn export_plot_image(plot_data: PlotData, params: ImageExportParams) -> Result<ExportResultInfo, String>
+
+#[tauri::command]
+pub async fn get_plot_config() -> Result<PlotConfig, String>
 ```
 
-### 前端API调用 - 流水线处理
+### 前端用户界面组件
+
+```typescript
+// 主要Vue组件结构
+// App.vue - 主应用组件
+<template>
+  <el-container class="main-container">
+    <!-- 左侧参数配置面板 -->
+    <el-aside width="300px">
+      <ParameterPanel 
+        :data-ranges="dataRanges"
+        @load-file="handleLoadFile"
+        @extract-curve="handleExtractCurve"
+        @detect-peaks="handleDetectPeaks"
+        @fit-peaks="handleFitPeaks"
+        @run-pipeline="handleRunPipeline"
+        @export-results="handleExportResults"
+        @export-spectro-data="handleExportSpectroData"
+      />
+    </el-aside>
+
+    <!-- 中间图像面板 -->
+    <el-main>
+      <PlotPanel 
+        :container="currentContainer"
+        :plot-mode="plotMode"
+        @plot-mode-changed="handlePlotModeChanged"
+      />
+    </el-main>
+
+    <!-- 右侧信息输出面板 -->
+    <el-aside width="300px">
+      <InfoPanel 
+        :file-info="currentFileInfo"
+        :status="processingStatus"
+        :logs="logs"
+        :curve-data="curveData"
+        @export-curves="handleExportCurvesToFolder"
+      />
+    </el-aside>
+  </el-container>
+</template>
+
+// ParameterPanel.vue - 参数配置面板
+// 功能: 文件选择、参数配置、处理控制、数据导出
+// 支持: 曲线提取、峰检测、峰拟合、自动处理流水线、光谱数据导出
+
+// PlotPanel.vue - 数据可视化面板  
+// 功能: 交互式数据可视化、多模式切换、Plotly图表
+// 支持: 原始曲线、峰检测、峰拟合模式切换
+
+// InfoPanel.vue - 信息显示面板
+// 功能: 文件信息显示、处理状态、日志记录、曲线数据展示
+
+// ProgressBar.vue - 进度条组件
+// 功能: 处理进度显示、状态消息
+```
+
+### 前端API调用示例
 
 ```typescript
 // 1. 文件加载
-const fileInfo = await MZCurveAPI.loadFile(filePath);
+const fileInfo = await invoke('load_file', { filePath });
 
-// 2. 数据提取
-const container = await MZCurveAPI.extractCurve({
+// 2. 曲线提取
+const container = await invoke('extract_curve', {
   file_path: filePath,
-  mz_range: "100.0-200.0",
-  rt_range: "0.0-60.0",
+  mz_min: 100.0,
+  mz_max: 200.0,
+  rt_min: 0.0,
+  rt_max: 60.0,
   ms_level: 1,
-  mode: "dt"
+  curve_type: "dt"
 });
 
-// 3. 峰检测流水线 - 在DataContainer中添加峰对象
-const containerWithPeaks = await MZCurveAPI.detectPeaks(container, {
+// 3. 峰分析
+const containerWithPeaks = await invoke('analyze_peaks', {
+  container: container,
   detection_method: "cwt",
   sensitivity: 0.7,
-  threshold_multiplier: 3.0,
-  min_peak_width: 0.1,
-  max_peak_width: 10.0
-});
-// 结果: DataContainer { curves: [原始曲线], peaks: [Peak(center, amplitude)], metadata: {} }
-// 可视化: 显示原始曲线 + 检测到的峰位置
-
-// 4. 峰拟合流水线 - 增强DataContainer中的峰对象
-const containerWithFittedPeaks = await MZCurveAPI.fitPeaks(containerWithPeaks, {
-  fitting_method: "gaussian",
-  overlapping_method: "auto",
-  fit_quality_threshold: 0.8
-});
-// 结果: DataContainer { curves: [原始曲线], peaks: [Peak(area, fwhm, 拟合参数)], metadata: {} }
-// 可视化: 显示原始曲线 + 峰信息 + 拟合质量
-
-// 5. 峰增强流水线 - 进一步增强DataContainer中的峰对象
-const containerWithEnhancedPeaks = await MZCurveAPI.enhancePeaks(containerWithFittedPeaks, {
-  quality_threshold: 0.5,
-  boundary_method: "adaptive",
-  separation_analysis: true
-});
-// 结果: DataContainer { curves: [原始曲线], peaks: [Peak(质量评分, 边界, 分离度)], metadata: {} }
-// 可视化: 显示完整的峰分析结果
-
-// 6. 曲线还原 - 在DataContainer中添加拟合曲线
-const containerWithReconstructedCurves = await MZCurveAPI.reconstructCurves(containerWithEnhancedPeaks, {
-  resolution: 1000,
-  include_baseline: true,
-  include_individual_peaks: true
-});
-// 结果: DataContainer { curves: [原始曲线, 拟合曲线], peaks: [Peak(完整信息)], metadata: {} }
-// 可视化: 显示原始曲线 + 拟合曲线 + 单个峰曲线
-
-// 7. 基线校正 (可选步骤)
-const correctedContainer = await MZCurveAPI.baselineCorrection(containerWithReconstructedCurves, {
-  method: "asymmetric_least_squares",
-  parameters: { lambda: 1000, p: 0.01 }
+  fitting_method: "gaussian"
 });
 
-// 8. 数据导出
-const exportResult = await MZCurveAPI.exportTsv(correctedContainer, {
-  output_path: "./results.tsv",
-  include_curves: true,
-  include_peaks: true,
-  include_fitted_curves: true
+// 4. 数据导出
+// 导出曲线数据到文件夹
+const curveExportResult = await invoke('export_curves_to_folder', {
+  outputFolder: folderPath,
+  container: container
+});
+
+// 导出光谱数据
+const spectroExportResult = await invoke('export_spectro_tsv', {
+  params: {
+    file_path: filePath,
+    output_path: filePath,
+    include_header: true,
+    decimal_precision: 6,
+    include_metadata: true,
+    filter_by_ms_level: 1,
+    mz_range_min: 100.0,
+    mz_range_max: 200.0,
+    intensity_threshold: 0.0,
+    include_spectrum_id: false,
+    include_retention_time: false
+  }
+});
+
+// 5. 可视化
+const plotData = await invoke('generate_plot', {
+  container: container,
+  plot_type: "line",
+  show_peaks: true,
+  show_fitted_curves: true
 });
 ```
 
 ## 使用示例
 
-### 基本使用流程
+### 桌面应用使用流程
 
-```rust
-use mz_curve::*;
+1. **启动应用**
+   ```bash
+   npm run tauri dev  # 开发模式
+   npm run tauri build  # 构建发布版本
+   ```
 
-// 1. 创建处理请求
-let request = ProcessingRequest {
-    file_path: "data.mzML".to_string(),
-    mz_range: "100.0-200.0".to_string(),
-    rt_range: "0.0-60.0".to_string(),
-    ms_level: 1,
-    mode: "dt".to_string(),
-};
+2. **基本操作流程**
+   - 点击"选择文件"按钮，选择mzML/mzXML数据文件
+   - 在左侧面板配置处理参数（m/z范围、保留时间范围、MS级别等）
+   - 点击"提取曲线"开始数据处理
+   - 在中间面板查看数据可视化结果
+   - 使用"峰检测"和"峰拟合"进行进一步分析
+   - 点击"导出结果"或"导出全景谱图数据"保存分析结果
 
-// 2. 处理数据
-let result = process_file(request).await?;
-
-// 3. 导出结果
-let export_manager = ExportManager::new();
-let export_config = serde_json::json!({
-    "include_curves": true,
-    "include_peaks": true
-});
-
-let export_result = export_manager.export(
-    "plotly",
-    &result,
-    export_config
-).await?;
-```
+3. **高级功能**
+   - 使用"自动处理"按钮运行完整的分析流水线
+   - 在右侧面板查看详细的处理日志和状态信息
+   - 支持多种导出格式：TSV、JSON、Plotly、光谱数据等
 
 ### 峰分析示例
 

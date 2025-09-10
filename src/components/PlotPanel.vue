@@ -81,6 +81,43 @@ const plotTitle = computed(() => {
   }
 })
 
+// 计算坐标轴标签
+const axisLabels = computed(() => {
+  if (!props.container || !props.container.curves || props.container.curves.length === 0) {
+    return {
+      x: 'Drift Time (ms)',
+      y: 'Intensity'
+    }
+  }
+  
+  const curve = props.container.curves[0]
+  const curveType = curve.curve_type?.toLowerCase() || 'dt'
+  
+  // 根据曲线类型设置坐标轴标签
+  switch (curveType) {
+    case 'dt':
+      return {
+        x: 'Drift Time (ms)',
+        y: 'Intensity'
+      }
+    case 'tic':
+      return {
+        x: 'Retention Time (min)',
+        y: 'Total Ion Current'
+      }
+    case 'xic':
+      return {
+        x: 'Retention Time (min)',
+        y: 'Extracted Ion Current'
+      }
+    default:
+      return {
+        x: curve.x_label || 'X轴',
+        y: curve.y_label || 'Y轴'
+      }
+  }
+})
+
 // 监听器
 watch(() => props.container, () => {
   nextTick(() => {
@@ -116,12 +153,12 @@ function initializePlot() {
   const layout = {
     title: 'MZ Curve 数据可视化',
     xaxis: { 
-      title: 'Drift Time (ms)',
+      title: axisLabels.value.x,
       showgrid: true,
       gridcolor: '#f0f0f0'
     },
     yaxis: { 
-      title: 'Intensity',
+      title: axisLabels.value.y,
       showgrid: true,
       gridcolor: '#f0f0f0'
     },
@@ -211,12 +248,12 @@ function updatePlot() {
   const layout = {
     title: plotTitle.value,
     xaxis: { 
-      title: 'Drift Time (ms)',
+      title: axisLabels.value.x,
       showgrid: true,
       gridcolor: '#f0f0f0'
     },
     yaxis: { 
-      title: 'Intensity',
+      title: axisLabels.value.y,
       showgrid: true,
       gridcolor: '#f0f0f0'
     },

@@ -205,6 +205,18 @@
             </el-col>
           </el-row>
         </el-form-item>
+
+        <el-form-item>
+          <el-button 
+            type="primary" 
+            @click="exportSpectroData" 
+            :loading="loading"
+            style="width: 100%"
+            :icon="Download"
+          >
+            导出全景谱图数据
+          </el-button>
+        </el-form-item>
       </el-form>
     </el-card>
   </div>
@@ -213,7 +225,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { FolderOpened } from '@element-plus/icons-vue'
+import { FolderOpened, Download } from '@element-plus/icons-vue'
 import type { DataRanges } from '../types/data'
 
 // 定义 props
@@ -228,7 +240,8 @@ const emit = defineEmits([
   'detect-peaks',
   'fit-peaks',
   'run-pipeline',
-  'export-results'
+  'export-results',
+  'export-spectro-data'
 ])
 
 // 响应式数据
@@ -357,6 +370,28 @@ function runFullPipeline() {
 
 function exportResults() {
   emit('export-results')
+}
+
+function exportSpectroData() {
+  if (!form.filePath) {
+    ElMessage.warning('请先选择文件')
+    return
+  }
+  
+  const params = {
+    file_path: form.filePath,
+    include_header: true,
+    decimal_precision: 6,
+    include_metadata: true,
+    filter_by_ms_level: form.msLevel,
+    mz_range_min: parseFloat(form.mzMin),
+    mz_range_max: parseFloat(form.mzMax),
+    rt_range_min: parseFloat(form.rtMin),
+    rt_range_max: parseFloat(form.rtMax),
+    intensity_threshold: 0.0
+  }
+  
+  emit('export-spectro-data', params)
 }
 </script>
 

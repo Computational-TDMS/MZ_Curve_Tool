@@ -20,6 +20,7 @@ impl ExportManager {
         manager.register_exporter("tsv", Box::new(super::TsvExporter));
         manager.register_exporter("plotly", Box::new(super::PlotlyExporter));
         manager.register_exporter("curve_tsv", Box::new(super::CurveTsvExporter));
+        manager.register_exporter("spectro_tsv", Box::new(super::SpectroTsvExporter));
         
         manager
     }

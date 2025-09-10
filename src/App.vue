@@ -11,6 +11,7 @@
           @fit-peaks="handleFitPeaks"
           @run-pipeline="handleRunPipeline"
           @export-results="handleExportResults"
+          @export-spectro-data="handleExportSpectroData"
         />
       </el-aside>
 
@@ -353,6 +354,54 @@ async function handleExportCurvesToFolder() {
     
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
+    addLog('error', '导出失败', errorMessage)
+    ElMessage.error('导出失败: ' + errorMessage)
+  } finally {
+    setProcessing(false)
+  }
+}
+
+async function handleExportSpectroData(params: any) {
+  try {
+    console.log('开始导出光谱数据，参数:', params)
+    
+    const { save } = await import('@tauri-apps/plugin-dialog')
+    const filePath = await save({
+      title: '保存光谱数据文件',
+      filters: [{
+        name: 'TSV文件',
+        extensions: ['tsv']
+      }],
+      defaultPath: 'spectro_data.tsv'
+    })
+    
+    if (!filePath) {
+      console.log('用户取消了文件保存')
+      return
+    }
+    
+    console.log('选择的文件路径:', filePath)
+    
+    setProcessing(true, '导出光谱数据')
+    
+    const exportParams = {
+      ...params,
+      output_path: filePath
+    }
+    
+    console.log('发送到后端的参数:', exportParams)
+    
+    const { invoke } = await import('@tauri-apps/api/core')
+    const result = await invoke('export_spectro_tsv', { params: exportParams })
+    
+    console.log('后端返回结果:', result)
+    
+    ElMessage.success(`光谱数据导出完成: ${result.message}`)
+    addLog('success', '导出完成', `光谱数据已导出到: ${filePath}`)
+    
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    console.error('导出失败:', error)
     addLog('error', '导出失败', errorMessage)
     ElMessage.error('导出失败: ' + errorMessage)
   } finally {

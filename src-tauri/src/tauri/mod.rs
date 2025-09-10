@@ -6,10 +6,15 @@ pub mod state;
 
 // 重新导出 - 避免重复导出
 pub use commands::{
-    FileInfo, ValidationResult, CurveExtractionParams,
+    FileInfo, ValidationResult, DataRanges, CurveExtractionParams,
     PeakAnalysisParams, PeakAnalysisResult, BatchProcessingResult, ProgressUpdate,
-    load_file, validate_file, extract_curve, analyze_peaks, batch_process_files,
-    get_app_state, update_processing_params, get_processing_status
+    ExportResultInfo, ExportParams, CurveDisplayData,
+    load_file, validate_file, clear_file_cache, extract_curve, analyze_peaks, batch_process_files,
+    get_app_state, update_processing_params, get_processing_status,
+    export_curves_to_folder, export_tsv, export_json, export_plot, export_spectro_tsv,
+    get_curve_data_for_display, baseline_correction, overlapping_peaks, smooth_data, noise_reduction,
+    save_config, load_config, reset_config, get_default_params,
+    generate_plot, update_plot, export_plot_image, get_plot_config
 };
 
 // 重新导出pipeline命令
@@ -23,6 +28,6 @@ pub use crate::core::pipeline::pipeline_commands::{
 pub use state::{
     AppState, AppStateManager, ProcessingParams, ProcessingStatus, ProcessingResult,
     ProcessingData, DTCurvePoint, PeakInfo, VisualizationData, PeakData, ChartMetadata,
-    MultiCurveData, MultiCurveMetadata, DataRanges, LogMessage, CurveData
+    MultiCurveData, MultiCurveMetadata, LogMessage, CurveData
 };
 pub use crate::core::state::CurveMetadata;

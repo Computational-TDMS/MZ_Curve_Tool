@@ -44,6 +44,7 @@ pub fn run() {
             export_tsv,
             export_json,
             export_plot,
+            export_spectro_tsv,
             // 高级处理API
             baseline_correction,
             overlapping_peaks,
