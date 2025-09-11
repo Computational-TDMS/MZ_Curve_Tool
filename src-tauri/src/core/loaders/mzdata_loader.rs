@@ -29,7 +29,6 @@ impl DataLoader {
             metadata: HashMap::new(),
             spectra: Vec::new(),
             curves: Vec::new(),
-            peaks: Vec::new(),
         };
         
         let mut processed_count = 0;

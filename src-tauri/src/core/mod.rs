@@ -8,4 +8,3 @@ pub mod exporters;
 pub mod engine;
 pub mod utils;
 pub mod state;
-pub mod pipeline;

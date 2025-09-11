@@ -8,6 +8,8 @@ use super::peak::Peak;
 #[derive(Debug, Clone)]
 pub struct ProcessingResult {
     pub curves: Vec<Curve>,
+    // 注意：peaks 现在嵌套在 curves 中，这里保留是为了向后兼容
+    // 但实际使用时应该通过 curves 来访问 peaks
     pub peaks: Vec<Peak>,
     pub metadata: HashMap<String, serde_json::Value>,
 }
@@ -57,6 +59,26 @@ impl ProcessingResult {
         self.curves.extend(other.curves);
         self.peaks.extend(other.peaks);
         self.metadata.extend(other.metadata);
+    }
+    
+    /// Convert to DataContainer with tree structure
+    /// 将 ProcessingResult 转换为树状结构的 DataContainer
+    pub fn to_data_container(self) -> crate::core::data::DataContainer {
+        use crate::core::data::DataContainer;
+        
+        // 将 peaks 分配到对应的 curves 中
+        let mut curves = self.curves;
+        for peak in self.peaks {
+            if let Some(curve) = curves.iter_mut().find(|c| c.id == peak.curve_id) {
+                curve.add_peak(peak);
+            }
+        }
+        
+        DataContainer {
+            metadata: self.metadata,
+            spectra: Vec::new(),
+            curves,
+        }
     }
 }
 

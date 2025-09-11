@@ -2,7 +2,7 @@
 
 use tauri::State;
 use crate::tauri::state::{AppStateManager, ProcessingStatus};
-use crate::core::processors::base::Processor;
+use crate::core::processors::core::Processor;
 use super::{PeakAnalysisParams, PeakAnalysisResult};
 
 /// 步骤4: 峰分析（保留向后兼容）
@@ -24,24 +24,7 @@ pub async fn analyze_peaks(
     log::info!("🔧 创建峰分析器: 检测={}, 拟合={}, 重叠处理={:?}", 
         params.detection_method, params.fitting_method, params.overlapping_method);
     
-    let peak_analyzer = match crate::core::processors::peak_analyzer::PeakAnalyzer::new_with_overlapping_processing(
-        &params.detection_method,
-        &params.fitting_method,
-        params.overlapping_method.as_deref()
-    ) {
-        Ok(analyzer) => {
-            log::info!("✅ 峰分析器创建成功");
-            analyzer
-        }
-        Err(e) => {
-            log::error!("❌ 峰分析器创建失败: {}", e);
-            {
-                let mut app_state = state.lock();
-                app_state.add_message("error", "峰分析器创建失败", &format!("错误: {}", e));
-            }
-            return Err(format!("峰分析器创建失败: {}", e));
-        }
-    };
+    let peak_analyzer = crate::core::processors::peak_analysis::PeakAnalyzer::new();
     
     // 转换CurveData到DataContainer
     log::info!("🔄 转换曲线数据到DataContainer...");

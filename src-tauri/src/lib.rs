@@ -7,10 +7,6 @@ pub mod core;
 
 use crate::tauri::state::{AppState, AppStateManager};
 use crate::tauri::commands::*;
-use crate::core::pipeline::pipeline_commands::{
-    detect_peaks, fit_peaks, enhance_peaks, reconstruct_curves, 
-    baseline_correction_pipeline, execute_pipeline
-};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -27,13 +23,13 @@ pub fn run() {
             extract_curve,
             analyze_peaks,
             batch_process_files,
-            // 流水线API
-            detect_peaks,
-            fit_peaks,
-            enhance_peaks,
-            reconstruct_curves,
-            baseline_correction_pipeline,
-            execute_pipeline,
+            // 流水线API - 暂时注释掉，因为命令不存在
+            // detect_peaks,
+            // fit_peaks,
+            // enhance_peaks,
+            // reconstruct_curves,
+            // baseline_correction_pipeline,
+            // execute_pipeline,
             // 状态管理API
             get_app_state,
             update_processing_params,
@@ -60,6 +56,14 @@ pub fn run() {
             update_plot,
             export_plot_image,
             get_plot_config,
+            // 峰处理工作流API
+            init_peak_processing_controller,
+            process_peaks,
+            get_available_components,
+            get_available_strategies,
+            get_component_info,
+            validate_config,
+            get_config_schema,
             // 系统信息API (暂时注释掉，因为命令不存在)
             // get_system_info,
             // get_memory_usage,

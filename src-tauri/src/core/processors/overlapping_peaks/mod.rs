@@ -7,8 +7,10 @@ pub mod sharpen_cwt_preprocessor;
 pub mod emg_nlls_fitter;
 pub mod extreme_overlap_processor;
 
-use crate::core::data::{Curve, Peak, ProcessingError};
+use crate::core::data::{Curve, Peak, ProcessingError, DataContainer, ProcessingResult};
+use crate::core::processors::core::Processor;
 use serde_json::Value;
+use async_trait::async_trait;
 
 /// 重叠峰处理器trait
 pub trait OverlappingPeakProcessor {
@@ -53,6 +55,75 @@ impl OverlappingPeakProcessor for OverlappingPeakProcessorEnum {
             OverlappingPeakProcessorEnum::ExtremeOverlap(p) => p.process_overlapping_peaks(peaks, curve, config),
         }
     }
+}
+
+#[async_trait]
+impl Processor for OverlappingPeakProcessorEnum {
+    fn name(&self) -> &str {
+        match self {
+            OverlappingPeakProcessorEnum::FBF(p) => p.name(),
+            OverlappingPeakProcessorEnum::SharpenCWT(p) => p.name(),
+            OverlappingPeakProcessorEnum::EMGNLLS(p) => p.name(),
+            OverlappingPeakProcessorEnum::ExtremeOverlap(p) => p.name(),
+        }
+    }
+
+    fn description(&self) -> &str {
+        match self {
+            OverlappingPeakProcessorEnum::FBF(_) => "前向背景拟合重叠峰处理器",
+            OverlappingPeakProcessorEnum::SharpenCWT(_) => "CWT锐化重叠峰处理器",
+            OverlappingPeakProcessorEnum::EMGNLLS(_) => "EMG NLLS重叠峰处理器",
+            OverlappingPeakProcessorEnum::ExtremeOverlap(_) => "极端重叠峰处理器",
+        }
+    }
+
+    fn processor_type(&self) -> crate::core::processors::core::ProcessorType {
+        crate::core::processors::core::ProcessorType::OverlappingPeaks
+    }
+    
+    fn supported_methods(&self) -> Vec<String> {
+        vec![
+            "fbf".to_string(),
+            "sharpen_cwt".to_string(),
+            "emg_nlls".to_string(),
+            "extreme_overlap".to_string(),
+        ]
+    }
+
+    fn config_schema(&self) -> Value {
+        serde_json::json!({
+            "type": "object",
+            "properties": {
+                "method": {
+                    "type": "string",
+                    "enum": ["fbf", "sharpen_cwt", "emg_nlls", "extreme_overlap"]
+                }
+            }
+        })
+    }
+
+    async fn process(&self, input: DataContainer, config: serde_json::Value) -> Result<ProcessingResult, ProcessingError> {
+        if input.curves.is_empty() {
+            return Err(ProcessingError::DataError("没有可处理的曲线数据".to_string()));
+        }
+
+        let curve = &input.curves[0];
+        
+        let processed_peaks = self.process_overlapping_peaks(&curve.peaks, curve, &config)?;
+        
+        // 将处理后的峰添加到曲线中
+        let mut result_curves = input.curves.clone();
+        if let Some(result_curve) = result_curves.first_mut() {
+            result_curve.peaks = processed_peaks.clone();
+        }
+
+        Ok(ProcessingResult {
+            curves: result_curves,
+            peaks: processed_peaks,
+            metadata: input.metadata,
+        })
+    }
+
 }
 
 /// 创建重叠峰处理器

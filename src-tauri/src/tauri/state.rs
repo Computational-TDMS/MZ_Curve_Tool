@@ -2,8 +2,9 @@
 //! 使用Tauri的状态管理来统一管理应用状态
 
 use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
+use std::sync::{Mutex, Arc};
 use tauri::Emitter;
+use crate::core::processors::peak_fitting::controllers::PeakProcessingController;
 
 /// 应用状态
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -181,6 +182,7 @@ pub struct ProgressUpdate {
 pub struct AppStateManager {
     state: Mutex<AppState>,
     file_cache: Mutex<std::collections::HashMap<String, crate::core::data::container::DataContainer>>,
+    peak_processing_controller: Arc<Mutex<Option<PeakProcessingController>>>,
 }
 
 impl AppStateManager {
@@ -188,6 +190,7 @@ impl AppStateManager {
         Self {
             state: Mutex::new(state),
             file_cache: Mutex::new(std::collections::HashMap::new()),
+            peak_processing_controller: Arc::new(Mutex::new(None)),
         }
     }
     
@@ -245,6 +248,22 @@ impl AppStateManager {
             cache.clear();
             log::info!("🗑️ 文件缓存已清除");
         }
+    }
+    
+    /// 初始化峰处理控制器
+    pub fn init_peak_processing_controller(&self) -> Result<(), String> {
+        if let Ok(mut controller) = self.peak_processing_controller.lock() {
+            if controller.is_none() {
+                *controller = Some(PeakProcessingController::new().map_err(|e| e.to_string())?);
+                log::info!("🎯 峰处理控制器已初始化");
+            }
+        }
+        Ok(())
+    }
+    
+    /// 获取峰处理控制器的Arc引用
+    pub fn get_peak_processing_controller_arc(&self) -> Arc<Mutex<Option<PeakProcessingController>>> {
+        self.peak_processing_controller.clone()
     }
 }
 

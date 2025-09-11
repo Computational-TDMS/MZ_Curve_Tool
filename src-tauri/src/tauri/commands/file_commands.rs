@@ -66,7 +66,7 @@ pub async fn load_file(file_path: String, app: tauri::AppHandle, state: State<'_
             let count = container.spectra.len();
             log::info!("✅ 文件加载成功: {} 个光谱", count);
             log::info!("📈 曲线数量: {}", container.curves.len());
-            log::info!("🔍 峰数量: {}", container.peaks.len());
+            log::info!("🔍 峰数量: {}", container.total_peak_count());
             
             // 发送加载完成进度更新
             state.emit_progress_update(&app, 70, 100, &format!("成功加载 {} 个光谱", count));

@@ -14,7 +14,7 @@ pub mod peak;
 pub mod processing;
 
 // Re-export the main types for convenience
-pub use container::DataContainer;
+pub use container::{DataContainer, SerializableDataContainer};
 pub use curve::Curve;
 pub use peak::{Peak, PeakType, DetectionAlgorithm};
 pub use processing::{ProcessingResult, ProcessingError, ProcessingProgress, ProcessingConfig, ProcessingStatus};

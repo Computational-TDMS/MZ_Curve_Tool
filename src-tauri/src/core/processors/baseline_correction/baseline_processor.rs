@@ -253,7 +253,8 @@ impl Processor for BaselineProcessor {
         
         let mut result = ProcessingResult::new();
         result.curves = output_container.curves;
-        result.peaks = output_container.peaks;
+        // 注意：peaks 现在嵌套在 curves 中，这里保留是为了向后兼容
+        result.peaks = Vec::new(); // 清空，因为 peaks 现在在 curves 中
         result.metadata = output_container.metadata;
         
         // 添加处理元数据

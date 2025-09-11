@@ -120,7 +120,7 @@ impl Exporter for PlotlyExporter {
         let metadata = helpers::create_export_metadata(
             self.name(),
             data.curves.len(),
-            data.peaks.len(),
+            data.total_peak_count(),
             &export_config,
         );
         
@@ -162,7 +162,14 @@ impl PlotlyExporter {
         
         // Add peak annotations
         if config.include_peaks && show_peaks {
-            let peak_trace = self.create_peak_trace(&data.peaks)?;
+            // 收集所有峰
+            let mut all_peaks = Vec::new();
+            for curve in &data.curves {
+                for peak in curve.get_peaks() {
+                    all_peaks.push(peak.clone());
+                }
+            }
+            let peak_trace = self.create_peak_trace(&all_peaks)?;
             traces.push(peak_trace);
         }
         

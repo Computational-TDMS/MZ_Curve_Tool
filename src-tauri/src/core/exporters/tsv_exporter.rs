@@ -107,7 +107,7 @@ impl Exporter for TsvExporter {
         let metadata = helpers::create_export_metadata(
             self.name(),
             data.curves.len(),
-            data.peaks.len(),
+            data.total_peak_count(),
             &export_config,
         );
         
@@ -135,7 +135,9 @@ impl TsvExporter {
             content.push_str("Fit_Parameters\tFit_Parameter_Errors\n");
         }
         
-        for peak in &data.peaks {
+        // 遍历所有曲线中的峰
+        for curve in &data.curves {
+            for peak in curve.get_peaks() {
             content.push_str(&format!("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t",
                 peak.id,
                 peak.curve_id,
@@ -193,6 +195,7 @@ impl TsvExporter {
                 .join(",");
             
             content.push_str(&format!("{}\t{}\n", fit_params, fit_errors));
+            }
         }
         
         Ok(content)
@@ -278,7 +281,7 @@ impl TsvExporter {
             content.push_str("# IMS Data Export\n");
             content.push_str(&format!("# Export Time: {}\n", helpers::generate_timestamp()));
             content.push_str(&format!("# Curves: {}\n", data.curves.len()));
-            content.push_str(&format!("# Peaks: {}\n", data.peaks.len()));
+            content.push_str(&format!("# Peaks: {}\n", data.total_peak_count()));
             content.push_str("#\n");
         }
         
@@ -315,7 +318,7 @@ impl TsvExporter {
         
         // Basic statistics
         content.push_str(&format!("Total_Curves\t{}\n", data.curves.len()));
-        content.push_str(&format!("Total_Peaks\t{}\n", data.peaks.len()));
+        content.push_str(&format!("Total_Peaks\t{}\n", data.total_peak_count()));
         
         if !data.curves.is_empty() {
             let total_points: usize = data.curves.iter().map(|c| c.point_count).sum();
@@ -326,10 +329,23 @@ impl TsvExporter {
                 helpers::format_float(avg_curve_length, config.decimal_precision)));
         }
         
-        if !data.peaks.is_empty() {
-            let avg_amplitude: f64 = data.peaks.iter().map(|p| p.amplitude).sum::<f64>() / data.peaks.len() as f64;
-            let avg_fwhm: f64 = data.peaks.iter().map(|p| p.fwhm).sum::<f64>() / data.peaks.len() as f64;
-            let avg_rsquared: f64 = data.peaks.iter().map(|p| p.rsquared).sum::<f64>() / data.peaks.len() as f64;
+        let total_peaks = data.total_peak_count();
+        if total_peaks > 0 {
+            let mut total_amplitude = 0.0;
+            let mut total_fwhm = 0.0;
+            let mut total_rsquared = 0.0;
+            
+            for curve in &data.curves {
+                for peak in curve.get_peaks() {
+                    total_amplitude += peak.amplitude;
+                    total_fwhm += peak.fwhm;
+                    total_rsquared += peak.rsquared;
+                }
+            }
+            
+            let avg_amplitude = total_amplitude / total_peaks as f64;
+            let avg_fwhm = total_fwhm / total_peaks as f64;
+            let avg_rsquared = total_rsquared / total_peaks as f64;
             
             content.push_str(&format!("Average_Peak_Amplitude\t{}\n", 
                 helpers::format_float(avg_amplitude, config.decimal_precision)));
@@ -361,9 +377,7 @@ impl TsvExporter {
             }
             
             // 导出每个峰的拟合曲线
-            let curve_peaks: Vec<&Peak> = data.peaks.iter()
-                .filter(|peak| peak.curve_id == curve.id)
-                .collect();
+            let curve_peaks = curve.get_peaks();
             
             for peak in curve_peaks {
                 let fitted_curve = self.generate_fitted_curve(peak, curve, config)?;

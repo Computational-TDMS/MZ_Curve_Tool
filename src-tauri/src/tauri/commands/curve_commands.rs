@@ -120,7 +120,6 @@ pub async fn extract_curve(
         metadata: result.metadata,
         spectra: Vec::new(), // ProcessingResult没有spectra字段，使用空向量
         curves: result.curves,
-        peaks: result.peaks,
     };
     
     // 转换为可序列化的数据容器
@@ -129,7 +128,7 @@ pub async fn extract_curve(
     Ok(serializable_container)
 }
 
-/// 批量处理多个文件
+/// 批量处理多个文件 - 优化版本
 #[tauri::command]
 pub async fn batch_process_files(
     file_paths: Vec<String>,
@@ -137,39 +136,52 @@ pub async fn batch_process_files(
     app: tauri::AppHandle,
     state: State<'_, AppStateManager>
 ) -> Result<BatchProcessingResult, String> {
+    let total_files = file_paths.len();
+    
     {
         let mut app_state = state.lock();
         app_state.set_processing_status(ProcessingStatus::Extracting);
-        app_state.add_message("info", "批量处理", &format!("开始批量处理 {} 个文件", file_paths.len()));
+        app_state.add_message("info", "批量处理", &format!("开始批量处理 {} 个文件", total_files));
     }
+    
+    // 发送进度更新事件
+    state.emit_progress_update(&app, 0, total_files, "开始批量处理...");
     
     let start_time = std::time::Instant::now();
     let mut processed_files = Vec::new();
     let mut failed_files = Vec::new();
     let mut total_curves = 0;
-    let total_peaks = 0;
+    let mut total_peaks = 0;
     
-    for file_path in file_paths {
+    for (index, file_path) in file_paths.iter().enumerate() {
+        // 更新进度
+        state.emit_progress_update(&app, index, total_files, &format!("处理文件: {}", file_path));
+        
         let mut file_params = params.clone();
         file_params.file_path = file_path.clone();
         
         match extract_curve(file_params, app.clone(), state.clone()).await {
             Ok(container) => {
-                processed_files.push(file_path);
-                total_curves += 1;
+                processed_files.push(file_path.clone());
+                total_curves += container.curves.len();
+                total_peaks += container.total_peak_count();
+                
                 {
                     let mut app_state = state.lock();
-                    app_state.add_message("success", "文件处理完成", &format!("成功处理: {} 条曲线", container.curves.len()));
+                    app_state.add_message("success", "文件处理完成", &format!("成功处理: {} 条曲线, {} 个峰值", container.curves.len(), container.total_peak_count()));
                 }
             }
             Err(e) => {
-                failed_files.push(file_path);
+                failed_files.push(file_path.clone());
                 {
                     let mut app_state = state.lock();
-                    app_state.add_message("error", "文件处理失败", &format!("处理失败: {}", e));
+                    app_state.add_message("error", "文件处理失败", &format!("处理失败: {} - {}", file_path, e));
                 }
             }
         }
+        
+        // 短暂延迟，避免阻塞UI
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
     }
     
     let processing_time = start_time.elapsed().as_millis() as u64;
@@ -184,10 +196,18 @@ pub async fn batch_process_files(
         error: if failed_files.is_empty() { None } else { Some("部分文件处理失败".to_string()) },
     };
     
+    // 发送最终进度更新
+    state.emit_progress_update(&app, total_files, total_files, "批量处理完成");
+    
     {
         let mut app_state = state.lock();
         app_state.set_processing_status(ProcessingStatus::Idle);
-        app_state.add_message("success", "批量处理完成", &format!("成功处理 {} 个文件，失败 {} 个", result.processed_files.len(), result.failed_files.len()));
+        app_state.add_message("success", "批量处理完成", &format!("成功处理 {} 个文件，失败 {} 个，总曲线: {}，总峰值: {}", 
+            result.processed_files.len(), 
+            result.failed_files.len(),
+            total_curves,
+            total_peaks
+        ));
     }
     
     Ok(result)

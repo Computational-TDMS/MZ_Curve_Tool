@@ -17,14 +17,14 @@ pub use commands::{
     generate_plot, update_plot, export_plot_image, get_plot_config
 };
 
-// 重新导出pipeline命令
-pub use crate::core::pipeline::pipeline_commands::{
-    PeakDetectionParams, PeakFittingParams, PeakEnhancementParams, 
-    CurveReconstructionParams, BaselineCorrectionParams, PipelineExecutionParams,
-    PipelineStepParams, PipelineExecutionResult,
-    detect_peaks, fit_peaks, enhance_peaks, reconstruct_curves, 
-    baseline_correction_pipeline, execute_pipeline
-};
+// 重新导出pipeline命令 - 暂时注释掉，因为pipeline模块不存在
+// pub use crate::core::pipeline::pipeline_commands::{
+//     PeakDetectionParams, PeakFittingParams, PeakEnhancementParams, 
+//     CurveReconstructionParams, BaselineCorrectionParams, PipelineExecutionParams,
+//     PipelineStepParams, PipelineExecutionResult,
+//     detect_peaks, fit_peaks, enhance_peaks, reconstruct_curves, 
+//     baseline_correction_pipeline, execute_pipeline
+// };
 pub use state::{
     AppState, AppStateManager, ProcessingParams, ProcessingStatus, ProcessingResult,
     ProcessingData, DTCurvePoint, PeakInfo, VisualizationData, PeakData, ChartMetadata,

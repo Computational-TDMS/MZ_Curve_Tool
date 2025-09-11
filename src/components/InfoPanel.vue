@@ -117,6 +117,61 @@
       </div>
     </el-card>
 
+    <!-- 多曲线对比卡片 -->
+    <el-card class="info-card" v-if="isComparing && multiCurveData && multiCurveData.length > 0">
+      <template #header>
+        <div class="card-header">
+          <el-icon><TrendCharts /></el-icon>
+          <span>多曲线对比</span>
+          <el-button 
+            type="text" 
+            size="small" 
+            @click="exitComparison"
+            style="margin-left: auto;"
+          >
+            退出对比
+          </el-button>
+        </div>
+      </template>
+      
+      <div class="comparison-info">
+        <div class="comparison-summary">
+          <el-tag type="info" size="small">
+            对比文件: {{ multiCurveData.length }} 个
+          </el-tag>
+        </div>
+        
+        <div class="comparison-list">
+          <div 
+            v-for="fileData in multiCurveData" 
+            :key="fileData.fileId"
+            class="comparison-item"
+          >
+            <div class="file-name">
+              <el-icon><Document /></el-icon>
+              <span>{{ fileData.fileName }}</span>
+            </div>
+            <div class="curve-count">
+              <el-tag size="small" type="success">
+                曲线: {{ fileData.curves.length }}
+              </el-tag>
+            </div>
+          </div>
+        </div>
+        
+        <div class="comparison-actions">
+          <el-button 
+            type="primary" 
+            size="small" 
+            @click="exportComparison"
+            :icon="Download"
+          >
+            导出对比结果
+          </el-button>
+        </div>
+      </div>
+    </el-card>
+
     <!-- 处理日志卡片 -->
     <el-card class="info-card log-card">
       <template #header>
@@ -165,7 +220,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import { Document, Monitor, ChatDotRound, TrendCharts } from '@element-plus/icons-vue'
+import { Document, Monitor, ChatDotRound, TrendCharts, Download } from '@element-plus/icons-vue'
 import type { CurveDisplayData } from '../types/data'
 
 // 定义props
@@ -180,11 +235,15 @@ const props = defineProps<{
     timestamp: string
   }>
   curveData?: CurveDisplayData[]
+  multiCurveData?: Array<{fileId: string, fileName: string, curves: any[]}>
+  isComparing?: boolean
 }>()
 
 // 定义emits
 const emit = defineEmits<{
   'export-curves': []
+  'exit-comparison': []
+  'export-comparison': []
 }>()
 
 // 响应式数据
@@ -278,6 +337,14 @@ function clearLogs() {
 
 function handleExportCurves() {
   emit('export-curves')
+}
+
+function exitComparison() {
+  emit('exit-comparison')
+}
+
+function exportComparison() {
+  emit('export-comparison')
 }
 
 function getCurveTableData(curve: CurveDisplayData) {
@@ -432,6 +499,43 @@ function getCurveTableData(curve: CurveDisplayData) {
 .curve-points {
   font-size: 12px;
   color: #909399;
+}
+
+/* 多曲线对比样式 */
+.comparison-info {
+  padding: 8px 0;
+}
+
+.comparison-summary {
+  margin-bottom: 12px;
+}
+
+.comparison-list {
+  margin-bottom: 16px;
+}
+
+.comparison-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.file-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #303133;
+}
+
+.comparison-actions {
+  display: flex;
+  justify-content: center;
 }
 
 .curve-info {

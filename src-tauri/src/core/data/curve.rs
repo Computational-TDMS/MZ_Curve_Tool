@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use super::peak::Peak;
 
 /// Curve data - contains complete scientific parameters
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -79,6 +80,10 @@ pub struct Curve {
     
     // === Metadata ===
     pub metadata: HashMap<String, serde_json::Value>,
+    
+    // === Peaks (树状结构) ===
+    /// 属于此曲线的峰列表
+    pub peaks: Vec<Peak>,
 }
 
 impl Curve {
@@ -137,6 +142,7 @@ impl Curve {
             completeness: 1.0,
             has_missing_points: false,
             metadata: HashMap::new(),
+            peaks: Vec::new(),
         }
     }
     
@@ -238,6 +244,66 @@ impl Curve {
     /// Get metadata value
     pub fn get_metadata(&self, key: &str) -> Option<&serde_json::Value> {
         self.metadata.get(key)
+    }
+    
+    // === Peak management methods ===
+    
+    /// Add a peak to this curve
+    pub fn add_peak(&mut self, peak: Peak) {
+        self.peaks.push(peak);
+    }
+    
+    /// Get the number of peaks in this curve
+    pub fn peak_count(&self) -> usize {
+        self.peaks.len()
+    }
+    
+    /// Get all peaks in this curve
+    pub fn get_peaks(&self) -> &Vec<Peak> {
+        &self.peaks
+    }
+    
+    /// Get mutable reference to peaks
+    pub fn get_peaks_mut(&mut self) -> &mut Vec<Peak> {
+        &mut self.peaks
+    }
+    
+    /// Get peak by ID
+    pub fn get_peak_by_id(&self, peak_id: &str) -> Option<&Peak> {
+        self.peaks.iter().find(|peak| peak.id == peak_id)
+    }
+    
+    /// Get peak by ID (mutable)
+    pub fn get_peak_by_id_mut(&mut self, peak_id: &str) -> Option<&mut Peak> {
+        self.peaks.iter_mut().find(|peak| peak.id == peak_id)
+    }
+    
+    /// Remove peak by ID
+    pub fn remove_peak(&mut self, peak_id: &str) -> Option<Peak> {
+        if let Some(pos) = self.peaks.iter().position(|peak| peak.id == peak_id) {
+            Some(self.peaks.remove(pos))
+        } else {
+            None
+        }
+    }
+    
+    /// Clear all peaks
+    pub fn clear_peaks(&mut self) {
+        self.peaks.clear();
+    }
+    
+    /// Get peaks by type
+    pub fn get_peaks_by_type(&self, peak_type: &super::peak::PeakType) -> Vec<&Peak> {
+        self.peaks.iter()
+            .filter(|peak| &peak.peak_type == peak_type)
+            .collect()
+    }
+    
+    /// Get peaks with quality score above threshold
+    pub fn get_high_quality_peaks(&self, threshold: f64) -> Vec<&Peak> {
+        self.peaks.iter()
+            .filter(|peak| peak.get_quality_score() >= threshold)
+            .collect()
     }
     
 }

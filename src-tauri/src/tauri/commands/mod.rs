@@ -8,6 +8,7 @@ pub mod export_commands;
 pub mod config_commands;
 pub mod visualization_commands;
 pub mod processing_commands;
+pub mod peak_processing_commands;
 
 // 重新导出所有命令
 pub use file_commands::*;
@@ -17,6 +18,7 @@ pub use export_commands::*;
 pub use config_commands::*;
 pub use visualization_commands::*;
 pub use processing_commands::*;
+pub use peak_processing_commands::*;
 
 // 公共结构体定义
 use serde::{Deserialize, Serialize};

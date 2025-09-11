@@ -1,8 +1,9 @@
+pub mod core;
 pub mod base;
 pub mod dt_extractor;
 pub mod tic_extractor;
 pub mod xic_extractor;
-pub mod peak_analyzer;
+pub mod peak_analysis;
 pub mod peak_detection;
 pub mod peak_fitting;
 pub mod overlapping_peaks;

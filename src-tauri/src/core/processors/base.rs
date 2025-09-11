@@ -3,7 +3,6 @@ use serde_json::Value;
 use crate::core::data::{DataContainer, ProcessingResult, ProcessingError};
 use crate::core::processors::dt_extractor::DTExtractor;
 use crate::core::processors::baseline_correction::BaselineProcessor;
-use crate::core::processors::peak_analyzer::PeakAnalyzer;
 
 /// 简化的处理器trait
 #[async_trait]
@@ -24,7 +23,6 @@ pub trait Processor: Send + Sync {
 pub enum ProcessorEnum {
     DTExtractor(DTExtractor),
     BaselineProcessor(BaselineProcessor),
-    PeakAnalyzer(PeakAnalyzer),
     // 可以添加更多处理器类型
 }
 
@@ -34,7 +32,6 @@ impl Processor for ProcessorEnum {
         match self {
             ProcessorEnum::DTExtractor(p) => p.name(),
             ProcessorEnum::BaselineProcessor(p) => p.name(),
-            ProcessorEnum::PeakAnalyzer(p) => p.name(),
         }
     }
 
@@ -42,7 +39,6 @@ impl Processor for ProcessorEnum {
         match self {
             ProcessorEnum::DTExtractor(p) => p.description(),
             ProcessorEnum::BaselineProcessor(p) => p.description(),
-            ProcessorEnum::PeakAnalyzer(p) => p.description(),
         }
     }
 
@@ -50,7 +46,6 @@ impl Processor for ProcessorEnum {
         match self {
             ProcessorEnum::DTExtractor(p) => p.config_schema(),
             ProcessorEnum::BaselineProcessor(p) => p.config_schema(),
-            ProcessorEnum::PeakAnalyzer(p) => p.config_schema(),
         }
     }
 
@@ -62,7 +57,6 @@ impl Processor for ProcessorEnum {
         match self {
             ProcessorEnum::DTExtractor(p) => p.process(input, config).await,
             ProcessorEnum::BaselineProcessor(p) => p.process(input, config).await,
-            ProcessorEnum::PeakAnalyzer(p) => p.process(input, config).await,
         }
     }
 }

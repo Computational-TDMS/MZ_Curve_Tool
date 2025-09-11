@@ -28,13 +28,101 @@
             >
               峰拟合
             </el-button>
+            <el-button 
+              :type="plotMode === 'area' ? 'primary' : ''"
+              size="small"
+              @click="setPlotMode('area')"
+            >
+              面积填充
+            </el-button>
           </el-button-group>
         </el-col>
       </el-row>
     </div>
     
     <div class="plot-container">
-      <div id="plotly-chart" ref="plotContainer"></div>
+      <!-- 原始曲线图表 -->
+      <BaseChart 
+        v-if="plotMode === 'original' && container?.curves?.[0]"
+        :curve="container.curves[0]"
+        :title="`${container.curves[0].curve_type || 'DT'} 曲线`"
+        @chart-updated="handleChartUpdated"
+        @peak-selected="handlePeakSelected"
+      />
+      
+      <!-- 峰检测图表 -->
+      <BaseChart 
+        v-else-if="plotMode === 'peaks' && container?.curves?.[0]"
+        :curve="container.curves[0]"
+        :peaks="container.peaks || []"
+        :show-peaks="true"
+        :title="`${container.curves[0].curve_type || 'DT'} 曲线 - 峰检测结果`"
+        @chart-updated="handleChartUpdated"
+        @peak-selected="handlePeakSelected"
+      />
+      
+      <!-- 峰拟合图表 -->
+      <PeakFittingChart 
+        v-else-if="plotMode === 'fitted' && container?.curves?.[0]"
+        :curve="container.curves[0]"
+        :peaks="container.peaks || []"
+        :title="`${container.curves[0].curve_type || 'DT'} 曲线 - 峰拟合结果`"
+        @chart-updated="handleChartUpdated"
+        @peak-selected="handlePeakSelected"
+      />
+      
+      <!-- 峰面积填充图表 -->
+      <PeakAreaChart 
+        v-else-if="plotMode === 'area' && container?.curves?.[0]"
+        :curve="container.curves[0]"
+        :peaks="container.peaks || []"
+        :title="`${container.curves[0].curve_type || 'DT'} 曲线 - 峰面积填充`"
+        @chart-updated="handleChartUpdated"
+        @peak-selected="handlePeakSelected"
+      />
+      
+      <!-- 拟合质量统计面板 -->
+      <div v-if="plotMode === 'fitted' && fittingQualityStats" class="fitting-quality-panel">
+        <el-card class="quality-card">
+          <template #header>
+            <span>拟合质量统计</span>
+          </template>
+          <el-row :gutter="12">
+            <el-col :span="6">
+              <div class="quality-item">
+                <div class="quality-label">平均R²</div>
+                <div class="quality-value" :class="getQualityClass(fittingQualityStats.avgRSquared)">
+                  {{ fittingQualityStats.avgRSquared.toFixed(3) }}
+                </div>
+              </div>
+            </el-col>
+            <el-col :span="6">
+              <div class="quality-item">
+                <div class="quality-label">平均迭代</div>
+                <div class="quality-value">
+                  {{ fittingQualityStats.avgIterations.toFixed(0) }}
+                </div>
+              </div>
+            </el-col>
+            <el-col :span="6">
+              <div class="quality-item">
+                <div class="quality-label">收敛率</div>
+                <div class="quality-value" :class="getConvergenceClass(fittingQualityStats.convergenceRate)">
+                  {{ (fittingQualityStats.convergenceRate * 100).toFixed(1) }}%
+                </div>
+              </div>
+            </el-col>
+            <el-col :span="6">
+              <div class="quality-item">
+                <div class="quality-label">峰数量</div>
+                <div class="quality-value">
+                  {{ fittingQualityStats.peakCount }}
+                </div>
+              </div>
+            </el-col>
+          </el-row>
+        </el-card>
+      </div>
     </div>
     
     <!-- 空状态 -->
@@ -47,19 +135,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
-import Plotly from 'plotly.js-dist'
+import { ref, computed, watch } from 'vue'
+import BaseChart from './BaseChart.vue'
+import PeakFittingChart from './PeakFittingChart.vue'
+import PeakAreaChart from './PeakAreaChart.vue'
 
 // 定义props和emits
 const props = defineProps<{
   container: any
   plotMode: string
+  multiCurveData?: Array<{fileId: string, fileName: string, curves: any[]}>
+  isComparing?: boolean
 }>()
 
-const emit = defineEmits(['request-data', 'plot-mode-changed'])
+const emit = defineEmits(['request-data', 'plot-mode-changed', 'chart-updated', 'peak-selected'])
 
 // 响应式数据
-const plotContainer = ref<HTMLElement>()
 const plotMode = ref(props.plotMode)
 
 // 计算属性
@@ -81,194 +172,66 @@ const plotTitle = computed(() => {
   }
 })
 
-// 计算坐标轴标签
-const axisLabels = computed(() => {
-  if (!props.container || !props.container.curves || props.container.curves.length === 0) {
-    return {
-      x: 'Drift Time (ms)',
-      y: 'Intensity'
-    }
+
+// 计算拟合质量统计
+const fittingQualityStats = computed(() => {
+  if (!props.container || !props.container.peaks || props.container.peaks.length === 0) {
+    return null
   }
   
-  const curve = props.container.curves[0]
-  const curveType = curve.curve_type?.toLowerCase() || 'dt'
+  const peaks = props.container.peaks
+  const validPeaks = peaks.filter((peak: any) => peak.rsquared !== undefined)
   
-  // 根据曲线类型设置坐标轴标签
-  switch (curveType) {
-    case 'dt':
-      return {
-        x: 'Drift Time (ms)',
-        y: 'Intensity'
-      }
-    case 'tic':
-      return {
-        x: 'Retention Time (min)',
-        y: 'Total Ion Current'
-      }
-    case 'xic':
-      return {
-        x: 'Retention Time (min)',
-        y: 'Extracted Ion Current'
-      }
-    default:
-      return {
-        x: curve.x_label || 'X轴',
-        y: curve.y_label || 'Y轴'
-      }
+  if (validPeaks.length === 0) {
+    return null
+  }
+  
+  const avgRSquared = validPeaks.reduce((sum: number, peak: any) => sum + peak.rsquared, 0) / validPeaks.length
+  const avgIterations = validPeaks.reduce((sum: number, peak: any) => sum + (peak.iterations || 0), 0) / validPeaks.length
+  const convergedCount = validPeaks.filter((peak: any) => peak.converged !== false).length
+  const convergenceRate = convergedCount / validPeaks.length
+  
+  return {
+    avgRSquared,
+    avgIterations,
+    convergenceRate,
+    peakCount: peaks.length
   }
 })
 
 // 监听器
-watch(() => props.container, () => {
-  nextTick(() => {
-    updatePlot()
-  })
-}, { deep: true })
-
 watch(() => props.plotMode, (newMode) => {
   plotMode.value = newMode
-  nextTick(() => {
-    updatePlot()
-  })
 }, { immediate: true })
 
-// 生命周期
-onMounted(() => {
-  initializePlot()
-})
-
 // 方法
-function initializePlot() {
-  if (!plotContainer.value) return
-  
-  const data = [{
-    x: [],
-    y: [],
-    type: 'scatter',
-    mode: 'lines',
-    name: '原始曲线',
-    line: { color: '#409EFF' }
-  }]
-
-  const layout = {
-    title: 'MZ Curve 数据可视化',
-    xaxis: { 
-      title: axisLabels.value.x,
-      showgrid: true,
-      gridcolor: '#f0f0f0'
-    },
-    yaxis: { 
-      title: axisLabels.value.y,
-      showgrid: true,
-      gridcolor: '#f0f0f0'
-    },
-    showlegend: true,
-    margin: { t: 80, r: 50, b: 80, l: 80 },
-    plot_bgcolor: '#fff',
-    paper_bgcolor: '#fff'
-  }
-
-  const config = {
-    responsive: true,
-    displayModeBar: true,
-    modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d'],
-    displaylogo: false
-  }
-
-  Plotly.newPlot(plotContainer.value, data, layout, config)
-}
-
-function updatePlot() {
-  if (!plotContainer.value || !props.container || !props.container.curves || props.container.curves.length === 0) {
-    return
-  }
-
-  const curve = props.container.curves[0]
-  const data = []
-
-  // 原始曲线
-  data.push({
-    x: curve.x_values || [],
-    y: curve.y_values || [],
-    type: 'scatter',
-    mode: 'lines',
-    name: '原始曲线',
-    line: { color: '#409EFF', width: 2 }
-  })
-
-  // 根据模式添加额外数据
-  if (plotMode.value === 'peaks' && props.container.peaks && props.container.peaks.length > 0) {
-    // 添加峰位置标记
-    const peakX = props.container.peaks.map((peak: any) => peak.center)
-    const peakY = props.container.peaks.map((peak: any) => peak.amplitude)
-    
-    data.push({
-      x: peakX,
-      y: peakY,
-      type: 'scatter',
-      mode: 'markers',
-      name: '检测到的峰',
-      marker: { 
-        color: '#F56C6C', 
-        size: 10,
-        symbol: 'diamond',
-        line: { color: '#fff', width: 2 }
-      }
-    })
-  }
-
-  if (plotMode.value === 'fitted' && props.container.peaks && props.container.peaks.length > 0) {
-    // 添加拟合的峰
-    props.container.peaks.forEach((peak: any, index: number) => {
-      if (peak.fit_parameters && Object.keys(peak.fit_parameters).length > 0) {
-        // 生成拟合曲线数据点
-        const xRange = curve.x_values || []
-        const fittedY = xRange.map((x: number) => {
-          // 简化的高斯拟合显示
-          const sigma = peak.fwhm / 2.355
-          return peak.amplitude * Math.exp(-0.5 * Math.pow((x - peak.center) / sigma, 2))
-        })
-
-        data.push({
-          x: xRange,
-          y: fittedY,
-          type: 'scatter',
-          mode: 'lines',
-          name: `峰 ${index + 1} 拟合`,
-          line: { 
-            color: `hsl(${index * 60}, 70%, 50%)`,
-            dash: 'dash',
-            width: 2
-          }
-        })
-      }
-    })
-  }
-
-  const layout = {
-    title: plotTitle.value,
-    xaxis: { 
-      title: axisLabels.value.x,
-      showgrid: true,
-      gridcolor: '#f0f0f0'
-    },
-    yaxis: { 
-      title: axisLabels.value.y,
-      showgrid: true,
-      gridcolor: '#f0f0f0'
-    },
-    showlegend: true,
-    margin: { t: 80, r: 50, b: 80, l: 80 },
-    plot_bgcolor: '#fff',
-    paper_bgcolor: '#fff'
-  }
-
-  Plotly.newPlot(plotContainer.value, data, layout, { responsive: true })
-}
-
 function setPlotMode(mode: string) {
   plotMode.value = mode
   emit('plot-mode-changed', mode)
+}
+
+function handleChartUpdated() {
+  emit('chart-updated')
+}
+
+function handlePeakSelected(peak: any, index: number) {
+  emit('peak-selected', peak, index)
+}
+
+// 获取质量等级样式类
+function getQualityClass(rSquared: number): string {
+  if (rSquared >= 0.95) return 'quality-excellent'
+  if (rSquared >= 0.90) return 'quality-good'
+  if (rSquared >= 0.80) return 'quality-fair'
+  return 'quality-poor'
+}
+
+// 获取收敛率样式类
+function getConvergenceClass(rate: number): string {
+  if (rate >= 0.95) return 'convergence-excellent'
+  if (rate >= 0.80) return 'convergence-good'
+  if (rate >= 0.60) return 'convergence-fair'
+  return 'convergence-poor'
 }
 </script>
 
@@ -313,6 +276,72 @@ function setPlotMode(mode: string) {
   background: #fafafa;
 }
 
+/* 拟合质量面板样式 */
+.fitting-quality-panel {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 300px;
+  z-index: 1000;
+}
+
+.quality-card {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+}
+
+.quality-item {
+  text-align: center;
+  padding: 8px;
+}
+
+.quality-label {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.quality-value {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+/* 质量等级颜色 */
+.quality-excellent {
+  color: #67c23a !important;
+}
+
+.quality-good {
+  color: #409eff !important;
+}
+
+.quality-fair {
+  color: #e6a23c !important;
+}
+
+.quality-poor {
+  color: #f56c6c !important;
+}
+
+/* 收敛率颜色 */
+.convergence-excellent {
+  color: #67c23a !important;
+}
+
+.convergence-good {
+  color: #409eff !important;
+}
+
+.convergence-fair {
+  color: #e6a23c !important;
+}
+
+.convergence-poor {
+  color: #f56c6c !important;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .plot-header {
@@ -325,6 +354,14 @@ function setPlotMode(mode: string) {
   
   .plot-header h3 {
     font-size: 14px;
+  }
+  
+  .fitting-quality-panel {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 100%;
+    margin-top: 16px;
   }
 }
 </style>
